@@ -114,6 +114,49 @@ def extract_kyoukigo():
 
     except Exception as e:
         return jsonify({"error": "Internal Server Error", "detail": str(e)}), 500
+    
+from flask import Flask, request, jsonify
+import requests
+import os
+from dotenv import load_dotenv
+
+load_dotenv()
+ZENSERP_API_KEY = os.getenv("ZENSERP_API_KEY")
+
+app = Flask(__name__)
+
+@app.route("/get-serp-urls", methods=["POST"])
+def get_serp_urls():
+    try:
+        data = request.get_json()
+        keyword = data.get("keyword", "").strip()
+        if not keyword:
+            return jsonify({"error": "keyword is required"}), 400
+
+        params = {
+            "q": keyword,
+            "num": "10",
+            "engine": "google",
+            "location": "Japan",
+            "hl": "ja",
+            "gl": "jp",
+            "api_key": ZENSERP_API_KEY
+        }
+
+        response = requests.get("https://app.zenserp.com/api/v2/search", params=params)
+        results = response.json()
+
+        urls = []
+        for result in results.get("organic", []):
+            link = result.get("url")
+            if link:
+                urls.append(link)
+
+        return jsonify({"urls": urls})
+
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
 
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=5001)
