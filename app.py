@@ -236,5 +236,68 @@ def get_lsi_paa():
     except Exception as e:
         return jsonify({"error": "SerpAPI error", "detail": str(e)}), 500
 
+from google.ads.googleads.client import GoogleAdsClient
+from google.ads.googleads.errors import GoogleAdsException
+
+@app.route("/get-related-terms", methods=["POST"])
+def get_related_terms():
+    try:
+        data = request.get_json()
+        keyword_text = data.get("keyword", "").strip()
+        if not keyword_text:
+            return jsonify({"error": "keyword is required"}), 400
+
+        # 環境変数から設定を読み込む
+        developer_token = os.getenv("GOOGLE_ADS_DEVELOPER_TOKEN")
+        client_id = os.getenv("GOOGLE_ADS_CLIENT_ID")
+        client_secret = os.getenv("GOOGLE_ADS_CLIENT_SECRET")
+        refresh_token = os.getenv("GOOGLE_ADS_REFRESH_TOKEN")
+        login_customer_id = os.getenv("GOOGLE_ADS_LOGIN_CUSTOMER_ID")
+
+        credentials = {
+            "developer_token": developer_token,
+            "client_id": client_id,
+            "client_secret": client_secret,
+            "refresh_token": refresh_token,
+            "login_customer_id": login_customer_id
+        }
+
+        client = GoogleAdsClient.load_from_dict({
+            "developer_token": developer_token,
+            "client_id": client_id,
+            "client_secret": client_secret,
+            "refresh_token": refresh_token,
+            "login_customer_id": login_customer_id
+        }, version="v16")
+
+        keyword_plan_idea_service = client.get_service("KeywordPlanIdeaService")
+
+        keyword_seed = [keyword_text]
+        location_ids = [2392]  # 日本のlocation_id（東京など）
+        language_id = 1005     # 日本語のlanguage_id
+
+        request_obj = client.get_type("GenerateKeywordIdeasRequest")
+        request_obj.customer_id = login_customer_id
+        request_obj.keyword_seed.keywords.extend(keyword_seed)
+        request_obj.language = f"languageConstants/{language_id}"
+        request_obj.geo_target_constants.append(f"geoTargetConstants/{location_ids[0]}")
+        request_obj.include_adult_keywords = False
+
+        response = keyword_plan_idea_service.generate_keyword_ideas(request=request_obj)
+
+        related_terms = []
+        for idea in response:
+            if idea.text:
+                related_terms.append(idea.text)
+            if len(related_terms) >= 30:
+                break
+
+        return jsonify({"related_terms": related_terms})
+
+    except GoogleAdsException as ex:
+        return jsonify({"error": "GoogleAds API Error", "detail": str(ex)}), 500
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=5001)
