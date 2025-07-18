@@ -123,11 +123,22 @@ def analyze_intent_persona():
         # プロンプト
         prompt = f"""
 あなたはSEOマーケティングの専門家です。
-以下は「{keyword}」に関する検索上位記事の本文です。これらを読んで、次の3点を出力してください。
+以下は「{keyword}」に関する検索上位記事の本文です。これらを読んで、次の3点をそれぞれ**100文字以上**で出力してください。
 
 1. 検索意図（searchintent）：このキーワードで検索した人は何を知りたいのか？
 2. ペルソナ（persona）：年齢層・地域・行動背景・動機などを具体的に
 3. 検索インサイト（searchinsights）：検索の裏にある本当の目的や悩み
+
+**出力形式：以下のように各項目を見出しと本文で出力してください（Markdown形式）**
+
+## 1. 検索意図（searchintent）
+[検索意図の説明文]
+
+## 2. ペルソナ（persona）
+[ペルソナの説明文]
+
+## 3. 検索インサイト（searchinsights）
+[検索インサイトの説明文]
 
 --- 記事本文 ---
 {body_text}
@@ -150,19 +161,37 @@ def analyze_intent_persona():
         response.raise_for_status()
         content = response.json()["content"][0]["text"]
 
-        # 結果抽出
+        # 結果抽出（マルチライン対応）
         result = {
             "searchintent": "",
             "persona": "",
             "searchinsights": ""
         }
+
+        current_key = None
+        buffer = []
+
         for line in content.splitlines():
             if "検索意図" in line:
-                result["searchintent"] = line.split("：", 1)[-1].strip()
+                if current_key and buffer:
+                    result[current_key] = "\n".join(buffer).strip()
+                    buffer = []
+                current_key = "searchintent"
             elif "ペルソナ" in line:
-                result["persona"] = line.split("：", 1)[-1].strip()
+                if current_key and buffer:
+                    result[current_key] = "\n".join(buffer).strip()
+                    buffer = []
+                current_key = "persona"
             elif "検索インサイト" in line:
-                result["searchinsights"] = line.split("：", 1)[-1].strip()
+                if current_key and buffer:
+                    result[current_key] = "\n".join(buffer).strip()
+                    buffer = []
+                current_key = "searchinsights"
+            elif current_key:
+                buffer.append(line.strip())
+
+        if current_key and buffer:
+            result[current_key] = "\n".join(buffer).strip()
 
         return jsonify(result)
 
