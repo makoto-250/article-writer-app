@@ -107,5 +107,67 @@ def extract_cooccur_terms():
     except Exception as e:
         return jsonify({"error": "Internal Server Error", "detail": str(e)}), 500
 
+@app.route("/analyze-intent-persona", methods=["POST"])
+def analyze_intent_persona():
+    try:
+        data = request.get_json()
+        html_list = data.get("scraphtml_list", [])
+        keyword = data.get("keyword", "")
+
+        if not html_list or not isinstance(html_list, list):
+            return jsonify({"error": "scraphtml_list must be a non-empty list"}), 400
+
+        # Claudeに渡す本文
+        body_text = "\n\n---\n\n".join(html_list)
+
+        # プロンプト
+        prompt = f"""
+あなたはSEOマーケティングの専門家です。
+以下は「{keyword}」に関する検索上位記事の本文です。これらを読んで、次の3点を出力してください。
+
+1. 検索意図（searchintent）：このキーワードで検索した人は何を知りたいのか？
+2. ペルソナ（persona）：年齢層・地域・行動背景・動機などを具体的に
+3. 検索インサイト（searchinsights）：検索の裏にある本当の目的や悩み
+
+--- 記事本文 ---
+{body_text}
+"""
+
+        # Claude API呼び出し
+        headers = {
+            "x-api-key": os.getenv("ANTHROPIC_API_KEY"),
+            "anthropic-version": "2023-06-01",
+            "content-type": "application/json"
+        }
+        body = {
+            "model": "claude-sonnet-4-20250514",
+            "max_tokens": 1024,
+            "temperature": 0.7,
+            "messages": [{"role": "user", "content": prompt}]
+        }
+
+        response = requests.post("https://api.anthropic.com/v1/messages", headers=headers, json=body)
+        response.raise_for_status()
+        content = response.json()["content"][0]["text"]
+
+        # 結果抽出
+        result = {
+            "searchintent": "",
+            "persona": "",
+            "searchinsights": ""
+        }
+        for line in content.splitlines():
+            if "検索意図" in line:
+                result["searchintent"] = line.split("：", 1)[-1].strip()
+            elif "ペルソナ" in line:
+                result["persona"] = line.split("：", 1)[-1].strip()
+            elif "検索インサイト" in line:
+                result["searchinsights"] = line.split("：", 1)[-1].strip()
+
+        return jsonify(result)
+
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=5001)
