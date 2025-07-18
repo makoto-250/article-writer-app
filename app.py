@@ -197,82 +197,38 @@ from collections import Counter
 
 app = Flask(__name__)
 
-# 共起語抽出のためのエンドポイント
-@app.route('/cooccur', methods=['POST'])
-def extract_cooccurrence_words():
-    try:
-        data = request.get_json()
-        html_list = data.get("scraphtml_list", [])
-
-        if not html_list or not isinstance(html_list, list):
-            return jsonify({"error": "Invalid input format. Provide 'scraphtml_list' as a list."}), 400
-
-        # MeCabの初期化（NEologdを使用）
-        tagger = MeCab.Tagger("-r /etc/mecabrc -d /usr/lib/x86_64-linux-gnu/mecab/dic/mecab-ipadic-neologd")
-
-        allowed_pos = {"名詞", "動詞", "形容詞", "副詞"}
-        excluded_pos = {"助詞", "助動詞", "接続詞", "感動詞", "連体詞"}
-
-        words = []
-
-        for html in html_list:
-            parsed = tagger.parse(html)
-            for line in parsed.split("\n"):
-                if line == "EOS" or not line.strip():
-                    continue
-                surface, features = line.split("\t")
-                pos = features.split(",")[0]
-                if pos in allowed_pos and pos not in excluded_pos:
-                    words.append(surface)
-
-        # 単語頻度をカウントして上位抽出
-        counter = Counter(words)
-        top_words = [word for word, _ in counter.most_common(30)]
-        top5_words = top_words[:5]
-
-        return jsonify({
-            "kyoukigo_list": top_words,
-            "kyoukigo_top5": top5_words
-        })
-
-    except Exception as e:
-        return jsonify({"error": str(e)}), 500
-    
-from flask import request, jsonify
-import MeCab
-from collections import Counter
-
-# 共起語抽出エンドポイント
 @app.route("/cooccur", methods=["POST"])
 def extract_cooccur_terms():
     data = request.get_json()
-    html_list = data.get("html_list", [])
+    html_list = data.get("scraphtml_list", [])  # ←変数名を統一
 
     if not html_list or not isinstance(html_list, list):
-        return jsonify({"error": "html_list must be a list of text"}), 400
+        return jsonify({"error": "scraphtml_list must be a list of text"}), 400
 
-    # NEologd辞書のパス
-    tagger = MeCab.Tagger("-d /usr/lib/x86_64-linux-gnu/mecab/dic/mecab-ipadic-neologd")
+    # MeCab NEologd初期化
+    tagger = MeCab.Tagger("-r /etc/mecabrc -d /usr/lib/x86_64-linux-gnu/mecab/dic/mecab-ipadic-neologd")
     tagger.parse('')  # UnicodeDecodeError対策
 
-    # 対象品詞
+    # 対象とする品詞
     valid_pos = {"名詞", "動詞", "形容詞", "副詞"}
-    ignore_pos = {"助詞", "助動詞", "接続詞", "感動詞", "連体詞"}
 
     word_counter = Counter()
 
     for html in html_list:
         parsed = tagger.parse(html)
         for line in parsed.splitlines():
-            if line == "EOS":
+            if line == "EOS" or not line.strip():
                 continue
-            surface, features = line.split("\t")
-            pos = features.split(",")[0]
-            if pos in valid_pos and pos not in ignore_pos:
-                word_counter[surface] += 1
+            try:
+                surface, features = line.split("\t")
+                pos = features.split(",")[0]
+                if pos in valid_pos and len(surface) > 1:  # ← フィルタ追加
+                    word_counter[surface] += 1
+            except ValueError:
+                continue  # 解析不能な行をスキップ
 
-    # 出現回数の多い順に上位語を抽出
-    kyoukigo_all = [w for w, _ in word_counter.most_common(15)]
+    # 共起語上位リスト作成
+    kyoukigo_all = [w for w, _ in word_counter.most_common(30)]
     kyoukigo_top5 = kyoukigo_all[:5]
 
     return jsonify({
