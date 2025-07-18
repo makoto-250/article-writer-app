@@ -72,6 +72,48 @@ def scrape_html():
 
     except Exception as e:
         return jsonify({"error": "Scrape error", "detail": str(e)}), 500
+    
+import MeCab
+from collections import Counter
+import re
+
+@app.route("/extract-kyoukigo", methods=["POST"])
+def extract_kyoukigo():
+    try:
+        data = request.get_json()
+        if not data or "scraphtml_list" not in data:
+            return jsonify({"error": "scraphtml_list is required"}), 400
+
+        scraphtml_list = data["scraphtml_list"]
+        if not isinstance(scraphtml_list, list):
+            return jsonify({"error": "scraphtml_list must be a list"}), 400
+
+        # MeCab準備（NEologdパスを適宜修正してください）
+        mecab = MeCab.Tagger("-d /usr/lib/mecab/dic/mecab-ipadic-neologd")
+
+        word_counter = Counter()
+        for html in scraphtml_list:
+            text = re.sub(r'<[^>]*?>', '', html)  # HTMLタグ除去
+            node = mecab.parseToNode(text)
+            while node:
+                features = node.feature.split(",")
+                if features[0] in ["名詞"] and features[1] not in ["数", "非自立", "接尾", "代名詞"]:
+                    word = node.surface
+                    if word and len(word) > 1:
+                        word_counter[word] += 1
+                node = node.next
+
+        # 出現回数順で共起語リストと上位5語
+        kyoukigo_list = [w for w, c in word_counter.most_common(40)]
+        kyoukigo_top5 = kyoukigo_list[:5]
+
+        return jsonify({
+            "kyoukigo_list": kyoukigo_list,
+            "kyoukigo_top5": kyoukigo_top5
+        })
+
+    except Exception as e:
+        return jsonify({"error": "Internal Server Error", "detail": str(e)}), 500
 
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=5001)
