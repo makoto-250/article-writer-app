@@ -191,5 +191,52 @@ def scrape_html():
 
     return jsonify({"scraphtml_list": scraphtml_list})
 
+from flask import Flask, request, jsonify
+import MeCab
+from collections import Counter
+
+app = Flask(__name__)
+
+# 共起語抽出のためのエンドポイント
+@app.route('/cooccur', methods=['POST'])
+def extract_cooccurrence_words():
+    try:
+        data = request.get_json()
+        html_list = data.get("scraphtml_list", [])
+
+        if not html_list or not isinstance(html_list, list):
+            return jsonify({"error": "Invalid input format. Provide 'scraphtml_list' as a list."}), 400
+
+        # MeCabの初期化（NEologdを使用）
+        tagger = MeCab.Tagger("-r /etc/mecabrc -d /usr/lib/x86_64-linux-gnu/mecab/dic/mecab-ipadic-neologd")
+
+        allowed_pos = {"名詞", "動詞", "形容詞", "副詞"}
+        excluded_pos = {"助詞", "助動詞", "接続詞", "感動詞", "連体詞"}
+
+        words = []
+
+        for html in html_list:
+            parsed = tagger.parse(html)
+            for line in parsed.split("\n"):
+                if line == "EOS" or not line.strip():
+                    continue
+                surface, features = line.split("\t")
+                pos = features.split(",")[0]
+                if pos in allowed_pos and pos not in excluded_pos:
+                    words.append(surface)
+
+        # 単語頻度をカウントして上位抽出
+        counter = Counter(words)
+        top_words = [word for word, _ in counter.most_common(30)]
+        top5_words = top_words[:5]
+
+        return jsonify({
+            "kyoukigo_list": top_words,
+            "kyoukigo_top5": top5_words
+        })
+
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=5001)
