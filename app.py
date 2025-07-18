@@ -135,7 +135,7 @@ def analyze_intent_persona():
 
         # Claude API呼び出し
         headers = {
-            "x-api-key": os.getenv("ANTHROPIC_API_KEY"),
+            "x-api-key": os.getenv("CLAUDE_API_KEY"),
             "anthropic-version": "2023-06-01",
             "content-type": "application/json"
         }
