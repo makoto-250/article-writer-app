@@ -15,12 +15,9 @@ RUN git clone --depth 1 https://github.com/neologd/mecab-ipadic-neologd.git && \
 # 作業ディレクトリ
 WORKDIR /app
 
-# Pythonライブラリのインストール
 COPY requirements.txt requirements.txt
 RUN pip install --no-cache-dir -r requirements.txt
 
-# アプリコードのコピー
 COPY . .
 
-# アプリ起動
 CMD ["python", "app.py"]
