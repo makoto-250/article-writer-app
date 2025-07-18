@@ -3,3 +3,4 @@ requests
 python-dotenv
 beautifulsoup4
 mecab-python3
+google-ads==22.0.0
