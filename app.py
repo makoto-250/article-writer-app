@@ -198,5 +198,43 @@ def analyze_intent_persona():
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 
+@app.route("/get-lsi-paa", methods=["POST"])
+def get_lsi_paa():
+    try:
+        data = request.get_json()
+        keyword = data.get("keyword", "").strip()
+        if not keyword:
+            return jsonify({"error": "keyword is required"}), 400
+
+        api_key = os.getenv("SERPAPI_API_KEY")
+        params = {
+            "engine": "google",
+            "q": keyword,
+            "hl": "ja",
+            "gl": "jp",
+            "api_key": api_key
+        }
+
+        response = requests.get("https://serpapi.com/search", params=params)
+        response.raise_for_status()
+        result = response.json()
+
+        lsi_list = []
+        paa_list = []
+
+        if "related_searches" in result:
+            lsi_list = [item.get("query") for item in result["related_searches"] if item.get("query")]
+
+        if "related_questions" in result:
+            paa_list = [item.get("question") for item in result["related_questions"] if item.get("question")]
+
+        return jsonify({
+            "lsi_list": lsi_list,
+            "paa_list": paa_list
+        })
+
+    except Exception as e:
+        return jsonify({"error": "SerpAPI error", "detail": str(e)}), 500
+
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=5001)
