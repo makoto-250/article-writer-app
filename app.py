@@ -267,7 +267,7 @@ def get_related_terms():
             "client_id": client_id,
             "client_secret": client_secret,
             "refresh_token": refresh_token,
-            "login_customer_id": login_customer_id
+            "login_customer_id": login_customer_id,
             "use_proto_plus": True
         }, version="v16")
 
