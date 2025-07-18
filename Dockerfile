@@ -6,7 +6,7 @@ RUN apt update && \
     apt clean && \
     rm -rf /var/lib/apt/lists/*
 
-# neologd 辞書をインストール
+# neologd辞書をインストール
 RUN git clone --depth 1 https://github.com/neologd/mecab-ipadic-neologd.git && \
     cd mecab-ipadic-neologd && \
     ./bin/install-mecab-ipadic-neologd -n -y && \
