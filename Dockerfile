@@ -1,4 +1,4 @@
-# 1. Pythonベース
+# 1. Pythonベース。
 FROM python:3.11-slim
 
 # 2. 必要なパッケージ
