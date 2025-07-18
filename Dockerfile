@@ -1,8 +1,11 @@
 FROM python:3.11-slim
 
-# 必要なライブラリをインストール
 RUN apt update && \
-    apt install -y mecab libmecab-dev mecab-ipadic-utf8 build-essential curl && \
+    apt install -y mecab libmecab-dev mecab-ipadic-utf8 git curl xz-utils file && \
+    git clone --depth 1 https://github.com/neologd/mecab-ipadic-neologd.git && \
+    cd mecab-ipadic-neologd && \
+    ./bin/install-mecab-ipadic-neologd -n -y && \
+    cd .. && rm -rf mecab-ipadic-neologd && \
     apt clean && \
     rm -rf /var/lib/apt/lists/*
 
