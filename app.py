@@ -156,7 +156,40 @@ def get_serp_urls():
 
     except Exception as e:
         return jsonify({"error": str(e)}), 500
+    
+from flask import Flask, request, jsonify
+import requests
+from bs4 import BeautifulSoup
 
+app = Flask(__name__)
+
+@app.route("/scrape_html", methods=["POST"])
+def scrape_html():
+    data = request.get_json()
+    url_list = data.get("url_list", [])
+
+    if not url_list or not isinstance(url_list, list):
+        return jsonify({"error": "url_list must be a list of URLs."}), 400
+
+    headers = {
+        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64)"
+    }
+
+    scraphtml_list = []
+    for url in url_list:
+        try:
+            res = requests.get(url, headers=headers, timeout=10)
+            res.raise_for_status()
+            soup = BeautifulSoup(res.text, "html.parser")
+
+            # 本文のテキスト抽出
+            text = soup.get_text(separator="\n", strip=True)
+            scraphtml_list.append(text)
+        except Exception as e:
+            print(f"Error scraping {url}: {e}")
+            scraphtml_list.append("")
+
+    return jsonify({"scraphtml_list": scraphtml_list})
 
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=5001)
