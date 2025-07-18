@@ -13,10 +13,13 @@ RUN apt update && apt install -y \
     mecab-ipadic-utf8 \
     && apt clean && rm -rf /var/lib/apt/lists/*
 
-# NEologdインストール
-RUN git clone --depth 1 https://github.com/neologd/mecab-ipadic-neologd.git \
-    && echo yes | mecab-ipadic-neologd/install.sh \
-    && rm -rf mecab-ipadic-neologd
+# NEologdのインストール
+RUN apt update && apt install -y git && \
+    git clone --depth 1 https://github.com/neologd/mecab-ipadic-neologd.git && \
+    cd mecab-ipadic-neologd && \
+    echo yes | ./bin/install-mecab-ipadic-neologd -n -y && \
+    cd .. && rm -rf mecab-ipadic-neologd
+
 
 # dicdir（辞書パス）を取得して保存（パス確認に使用）
 RUN echo $(mecab-config --dicdir)/mecab-ipadic-neologd > /usr/local/etc/mecabrc.dicdir

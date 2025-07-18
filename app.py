@@ -252,7 +252,7 @@ def extract_cooccur_terms():
         return jsonify({"error": "html_list must be a list of text"}), 400
 
     # NEologd辞書のパス
-    tagger = MeCab.Tagger("-r /etc/mecabrc -d /usr/lib/x86_64-linux-gnu/mecab/dic/mecab-ipadic-neologd")
+    tagger = MeCab.Tagger("-d /usr/lib/x86_64-linux-gnu/mecab/dic/mecab-ipadic-neologd")
     tagger.parse('')  # UnicodeDecodeError対策
 
     # 対象品詞
