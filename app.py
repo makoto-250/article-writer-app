@@ -123,13 +123,13 @@ def analyze_intent_persona():
         # プロンプト
         prompt = f"""
 あなたはSEOマーケティングの専門家です。
-以下は「{keyword}」に関する検索上位記事の本文です。これらを読んで、次の3点をそれぞれ**100文字以上**で出力してください。
+以下は「{keyword}」に関する検索上位記事の本文です。これらを読んで、次の3点を**必ずすべて**それぞれ100文字以上で出力してください。
 
-1. 検索意図（searchintent）：このキーワードで検索した人は何を知りたいのか？
-2. ペルソナ（persona）：年齢層・地域・行動背景・動機などを具体的に
-3. 検索インサイト（searchinsights）：検索の裏にある本当の目的や悩み
+1. 検索意図（searchintent）
+2. ペルソナ（persona）
+3. 検索インサイト（searchinsights）
 
-**出力形式：以下のように各項目を見出しと本文で出力してください（Markdown形式）**
+出力形式（Markdown）：
 
 ## 1. 検索意図（searchintent）
 [検索意図の説明文]
@@ -152,7 +152,7 @@ def analyze_intent_persona():
         }
         body = {
             "model": "claude-sonnet-4-20250514",
-            "max_tokens": 1024,
+            "max_tokens": 2048,
             "temperature": 0.7,
             "messages": [{"role": "user", "content": prompt}]
         }
