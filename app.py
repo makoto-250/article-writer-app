@@ -305,6 +305,102 @@ def generate_heading():
 
     except Exception as e:
         return jsonify({"error": "Claude error", "detail": str(e)}), 500
+    
+from flask import request, jsonify
+from datetime import datetime
+import os, re
+
+@app.route("/generate-body", methods=["POST"])
+def generate_body():
+    data = request.get_json()
+
+    # --- 共通パラメータ取得 ---
+    keyword = data.get("keyword", "")
+    lsi_list = data.get("lsi_list", [])
+    kyoukigo_list = data.get("kyoukigo_list", [])
+    paa_list = data.get("paa_list", [])
+    searchintent = data.get("searchintent", "")
+    searchinsights = data.get("searchinsights", "")
+    persona = data.get("persona", "")
+    blocks = data.get("blocks", [])
+
+    year = datetime.now().strftime("%Y")
+    month = datetime.now().strftime("%m")
+
+    # --- slug生成（1回のみ） ---
+    slug_prompt = f"""
+#目的  
+キーワードを渡しますのでURLに使用するslugを生成してください。  
+
+#生成ルール  
+キーワードを英語ほんやくしてください  
+すべて小文字にしてください  
+記号は-に変換してください  
+スペースは-に変換してください  
+
+例）  
+キーワード：私は男  
+翻訳例：I 'm a man  
+slug：i-m-a-man
+
+キーワード：{keyword}
+出力形式：slug：
+"""
+    slug_response = call_claude(slug_prompt)
+    match = re.search(r"slug\s*[:：]\s*(.+)", slug_response, re.IGNORECASE)
+    slug = match.group(1).strip() if match else "no-slug"
+
+    # --- テンプレート読み込み ---
+    with open("prompts/promptmaintext.txt", "r", encoding="utf-8") as f:
+        prompt_template = f.read()
+
+    # --- 各ブロックの生成 ---
+    results = {}
+    for block in blocks:
+        block_n = block.get("block_n", "")
+        block_title = block.get("block_title", "")
+        topic1 = block.get("topic1", "")
+        topic2 = block.get("topic2", "")
+        topic3 = block.get("topic3", "")
+        experience_flag = block.get("experience", 0)
+
+        # experienceコメント
+        experience_note = (
+            "※筆者の実体験を1つ含めてください。自然な形で1回だけ実体験を挿入してください。\n"
+            "「私の場合は〜」「以前住んでいた部屋では〜」など。"
+            if experience_flag == 1 else ""
+        )
+
+        # プレースホルダ置換
+        prompt = prompt_template.format(
+            keyword=keyword,
+            lsi_list=", ".join(lsi_list),
+            kyoukigo_list=", ".join(kyoukigo_list),
+            paa_list=", ".join(paa_list),
+            searchintent=searchintent,
+            searchinsights=searchinsights,
+            persona=persona,
+            block_n=block_n,
+            block_title=block_title,
+            topic1=topic1,
+            topic2=topic2,
+            topic3=topic3,
+            experience=experience_note,
+            year=year,
+            month=month,
+            slug=slug
+        )
+
+        # Claude呼び出し
+        try:
+            response = call_claude(prompt)
+            results[f"block{block_n}_html"] = response
+        except Exception as e:
+            return jsonify({"error": f"Block {block_n} failed: {str(e)}"}), 500
+
+    # --- 全結果返却 ---
+    results["slug"] = slug
+    return jsonify(results)
 
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=5001)
