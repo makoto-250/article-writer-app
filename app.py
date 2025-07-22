@@ -238,11 +238,6 @@ def get_lsi_paa():
 
 from google.ads.googleads.client import GoogleAdsClient
 from google.ads.googleads.errors import GoogleAdsException
-import os
-from flask import request, jsonify
-from dotenv import load_dotenv
-
-load_dotenv()
 
 @app.route("/get-related-terms", methods=["POST"])
 def get_related_terms():
@@ -252,13 +247,13 @@ def get_related_terms():
         if not keyword_text:
             return jsonify({"error": "keyword is required"}), 400
 
-        # 環境変数から設定を読み込む
+        # 環境変数取得
         developer_token = os.getenv("GOOGLE_ADS_DEVELOPER_TOKEN")
         client_id = os.getenv("GOOGLE_ADS_CLIENT_ID")
         client_secret = os.getenv("GOOGLE_ADS_CLIENT_SECRET")
         refresh_token = os.getenv("GOOGLE_ADS_REFRESH_TOKEN")
-        login_customer_id = os.getenv("GOOGLE_ADS_LOGIN_CUSTOMER_ID")  # MCC
-        customer_id = os.getenv("GOOGLE_ADS_CUSTOMER_ID")  # 管理対象アカウントID（例：1234567890）
+        login_customer_id = os.getenv("GOOGLE_ADS_LOGIN_CUSTOMER_ID")
+        customer_id = os.getenv("GOOGLE_ADS_CUSTOMER_ID")
 
         client = GoogleAdsClient.load_from_dict({
             "developer_token": developer_token,
@@ -267,16 +262,17 @@ def get_related_terms():
             "refresh_token": refresh_token,
             "login_customer_id": login_customer_id,
             "use_proto_plus": True
-        }, version="v16")
+        }, version="v16")  # 最新に合わせてください
 
         keyword_plan_idea_service = client.get_service("KeywordPlanIdeaService")
 
-        # リクエスト作成
+        # リクエスト構築
         request_obj = client.get_type("GenerateKeywordIdeasRequest")
-        request_obj.customer_id = customer_id  # ← MCCではなく管理アカウントID
-        request_obj.language = "languageConstants/1005"  # 日本語
-        request_obj.geo_target_constants.append("geoTargetConstants/2392")  # 日本
+        request_obj.customer_id = customer_id
+        request_obj.language = "languageConstants/1005"
+        request_obj.geo_target_constants.append("geoTargetConstants/2392")
         request_obj.include_adult_keywords = False
+        request_obj.keyword_plan_network = client.enums.KeywordPlanNetworkEnum.GOOGLE_SEARCH_AND_PARTNERS
         request_obj.keyword_seed.keywords.append(keyword_text)
 
         response = keyword_plan_idea_service.generate_keyword_ideas(request=request_obj)
