@@ -276,10 +276,12 @@ def generate_heading():
             "messages": [{"role": "user", "content": prompt}]
         }
 
+        # Claude API 呼び出し部分（修正済みでOKならこのままで大丈夫です）
         response = requests.post("https://api.anthropic.com/v1/messages", headers=headers, json=body)
         response.raise_for_status()
-        content = response.json()["content"][0]["text"]
 
+        # 修正ポイント：heading_html に一括格納して返す
+        content = response.json()["content"][0]["text"]
         return jsonify({"heading_html": content})
 
     except Exception as e:
