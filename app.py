@@ -236,8 +236,12 @@ def get_lsi_paa():
     except Exception as e:
         return jsonify({"error": "SerpAPI error", "detail": str(e)}), 500
 
+from flask import Flask, request, jsonify
 from google.ads.googleads.client import GoogleAdsClient
 from google.ads.googleads.errors import GoogleAdsException
+import os
+
+app = Flask(__name__)
 
 @app.route("/get-related-terms", methods=["POST"])
 def get_related_terms():
@@ -255,6 +259,7 @@ def get_related_terms():
         login_customer_id = os.getenv("GOOGLE_ADS_LOGIN_CUSTOMER_ID")
         customer_id = os.getenv("GOOGLE_ADS_CUSTOMER_ID")
 
+        # クライアント初期化（v14 or v13 指定に修正）
         client = GoogleAdsClient.load_from_dict({
             "developer_token": developer_token,
             "client_id": client_id,
@@ -262,19 +267,26 @@ def get_related_terms():
             "refresh_token": refresh_token,
             "login_customer_id": login_customer_id,
             "use_proto_plus": True
-        }, version="v16")  # 最新に合わせてください
+        }, version="v14")  # ← v16は未対応なのでv14で動かす
 
         keyword_plan_idea_service = client.get_service("KeywordPlanIdeaService")
+        geo_service = client.get_service("GeoTargetConstantService")
 
-        # リクエスト構築
+        # 地域と検索ネットワークなど設定
+        location_ids = ["2392"]  # 日本
+        language_id = "1005"     # 日本語
+
+        location_rns = [geo_service.geo_target_constant_path(loc_id) for loc_id in location_ids]
+
         request_obj = client.get_type("GenerateKeywordIdeasRequest")
         request_obj.customer_id = customer_id
-        request_obj.language = "languageConstants/1005"
-        request_obj.geo_target_constants.append("geoTargetConstants/2392")
+        request_obj.language = f"languageConstants/{language_id}"
+        request_obj.geo_target_constants.extend(location_rns)
         request_obj.include_adult_keywords = False
-        request_obj.keyword_plan_network = client.enums.KeywordPlanNetworkEnum.GOOGLE_SEARCH_AND_PARTNERS
+        request_obj.keyword_plan_network = client.enums.KeywordPlanNetworkEnum.GOOGLE_SEARCH
         request_obj.keyword_seed.keywords.append(keyword_text)
 
+        # 実行
         response = keyword_plan_idea_service.generate_keyword_ideas(request=request_obj)
 
         related_terms = []
@@ -287,7 +299,11 @@ def get_related_terms():
         return jsonify({"related_terms": related_terms})
 
     except GoogleAdsException as ex:
-        return jsonify({"error": "GoogleAds API Error", "detail": str(ex)}), 500
+        return jsonify({
+            "error": "GoogleAds API Error",
+            "detail": str(ex),
+            "details": [{"code": error.error_code, "message": error.message} for error in ex.failure.errors]
+        }), 500
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 
