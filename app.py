@@ -235,77 +235,56 @@ def get_lsi_paa():
 
     except Exception as e:
         return jsonify({"error": "SerpAPI error", "detail": str(e)}), 500
-
-from flask import Flask, request, jsonify
-from google.ads.googleads.client import GoogleAdsClient
-from google.ads.googleads.errors import GoogleAdsException
-import os
-
-app = Flask(__name__)
-
-@app.route("/get-related-terms", methods=["POST"])
-def get_related_terms():
+    
+@app.route("/generate-heading", methods=["POST"])
+def generate_heading():
     try:
         data = request.get_json()
-        keyword_text = data.get("keyword", "").strip()
-        if not keyword_text:
-            return jsonify({"error": "keyword is required"}), 400
 
-        # 環境変数取得
-        developer_token = os.getenv("GOOGLE_ADS_DEVELOPER_TOKEN")
-        client_id = os.getenv("GOOGLE_ADS_CLIENT_ID")
-        client_secret = os.getenv("GOOGLE_ADS_CLIENT_SECRET")
-        refresh_token = os.getenv("GOOGLE_ADS_REFRESH_TOKEN")
-        login_customer_id = os.getenv("GOOGLE_ADS_LOGIN_CUSTOMER_ID")
-        customer_id = os.getenv("GOOGLE_ADS_CUSTOMER_ID")
+        # 変数取得
+        required_keys = ["keyword", "kyoukigo_list", "kyoukigo_top5", "lsi_list", "paa_list", "persona", "searchintent", "searchinsights"]
+        for key in required_keys:
+            if key not in data:
+                return jsonify({"error": f"{key} is required"}), 400
 
-        # クライアント初期化（v14 or v13 指定に修正）
-        client = GoogleAdsClient.load_from_dict({
-            "developer_token": developer_token,
-            "client_id": client_id,
-            "client_secret": client_secret,
-            "refresh_token": refresh_token,
-            "login_customer_id": login_customer_id,
-            "use_proto_plus": True
-        }, version="v14")  # ← v16は未対応なのでv14で動かす
+        # テンプレート読み込み
+        with open("prompts/promptheading.txt", "r", encoding="utf-8") as f:
+            template = f.read()
 
-        keyword_plan_idea_service = client.get_service("KeywordPlanIdeaService")
-        geo_service = client.get_service("GeoTargetConstantService")
+        # プレースホルダ置換
+        prompt = template.format(
+            keyword=data["keyword"],
+            kyoukigo_list=", ".join(data["kyoukigo_list"]),
+            kyoukigo_top5=", ".join(data["kyoukigo_top5"]),
+            lsi_list=", ".join(data["lsi_list"]),
+            paa_list=", ".join(data["paa_list"]),
+            persona=data["persona"],
+            searchintent=data["searchintent"],
+            searchinsights=data["searchinsights"]
+        )
 
-        # 地域と検索ネットワークなど設定
-        location_ids = ["2392"]  # 日本
-        language_id = "1005"     # 日本語
+        # Claude API 呼び出し
+        headers = {
+            "x-api-key": os.getenv("CLAUDE_API_KEY"),
+            "anthropic-version": "2023-06-01",
+            "content-type": "application/json"
+        }
+        body = {
+            "model": "claude-sonnet-4-20250514",
+            "max_tokens": 3000,
+            "temperature": 0.7,
+            "messages": [{"role": "user", "content": prompt}]
+        }
 
-        location_rns = [geo_service.geo_target_constant_path(loc_id) for loc_id in location_ids]
+        response = requests.post("https://api.anthropic.com/v1/messages", headers=headers, json=body)
+        response.raise_for_status()
+        content = response.json()["content"][0]["text"]
 
-        request_obj = client.get_type("GenerateKeywordIdeasRequest")
-        request_obj.customer_id = customer_id
-        request_obj.language = f"languageConstants/{language_id}"
-        request_obj.geo_target_constants.extend(location_rns)
-        request_obj.include_adult_keywords = False
-        request_obj.keyword_plan_network = client.enums.KeywordPlanNetworkEnum.GOOGLE_SEARCH
-        request_obj.keyword_seed.keywords.append(keyword_text)
+        return jsonify({"heading_html": content})
 
-        # 実行
-        response = keyword_plan_idea_service.generate_keyword_ideas(request=request_obj)
-
-        related_terms = []
-        for idea in response:
-            if idea.text:
-                related_terms.append(idea.text)
-            if len(related_terms) >= 30:
-                break
-
-        return jsonify({"related_terms": related_terms})
-
-    except GoogleAdsException as ex:
-        return jsonify({
-            "error": "GoogleAds API Error",
-            "detail": str(ex),
-            "details": [{"code": error.error_code, "message": error.message} for error in ex.failure.errors]
-        }), 500
     except Exception as e:
-        return jsonify({"error": str(e)}), 500
+        return jsonify({"error": "Claude error", "detail": str(e)}), 500
+
 
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=5001)
