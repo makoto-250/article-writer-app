@@ -24,41 +24,45 @@
 ブロック構成と構造
 	全体は6ブロック構成（block:1~6）
 	各ブロックに対応する以下の構造を持つ：
-    <!-- block:1 experience=0 -->
-    <h2></h2>
-    <h3></h3>
-    <h3></h3>
-    <h3></h3>
+以下の形式で、すべてのHTMLコードを出力してください。HTMLコード全体はコードブロックで囲ってください（htmlで開始）。
 
-    <!-- block:2 experience=1 -->
-    <h2></h2>
-    <h3></h3>
-    <h3></h3>
-    <h3></h3>
+# 出力例フォーマット（実際の出力もこの形式）
+````html
+<!-- block:1 experience={experience_flag1} -->
+<h2>...</h2>
+<h3>...</h3>
+<h3>...</h3>
+<h3>...</h3>
 
-    <!-- block:3 experience=0 -->
-    <h2></h2>
-    <h3></h3>
-    <h3></h3>
-    <h3></h3>
+<!-- block:2 experience={experience_flag2} -->
+<h2>...</h2>
+<h3>...</h3>
+<h3>...</h3>
+<h3>...</h3>
 
-    <!-- block:4 experience=0 -->
-    <h2></h2>
-    <h3></h3>
-    <h3></h3>
-    <h3></h3>
+<!-- block:3 experience={experience_flag3} -->
+<h2>...</h2>
+<h3>...</h3>
+<h3>...</h3>
+<h3>...</h3>
 
-    <!-- block:5 experience=0 -->
-    <h2></h2>
-    <h3></h3>
-    <h3></h3>
-    <h3></h3>
+<!-- block:4 experience={experience_flag4} -->
+<h2>...</h2>
+<h3>...</h3>
+<h3>...</h3>
+<h3>...</h3>
 
-    <!-- block:6 experience=0 -->
-    <h2></h2>
-    <h3></h3>
-    <h3></h3>
-    <h3></h3>
+<!-- block:5 experience={experience_flag5} -->
+<h2>...</h2>
+<h3>...</h3>
+<h3>...</h3>
+<h3>...</h3>
+
+<!-- block:6 experience={experience_flag6} -->
+<h2>...</h2>
+<h3>...</h3>
+<h3>...</h3>
+<h3>...</h3>
 
 experience属性の制御ルール
 	- 各ブロックには experience=0 または experience=1 の属性を自動付与

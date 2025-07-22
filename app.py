@@ -239,19 +239,34 @@ def get_lsi_paa():
 @app.route("/generate-heading", methods=["POST"])
 def generate_heading():
     try:
+        import random
+
+        def generate_experience_flags(num_blocks=6, ratio=0.3):
+            flags = [1 if random.random() < ratio else 0 for _ in range(num_blocks)]
+            if sum(flags) == 0:
+                flags[random.randint(0, num_blocks - 1)] = 1
+            return flags
+
         data = request.get_json()
 
-        # 変数取得
-        required_keys = ["keyword", "kyoukigo_list", "kyoukigo_top5", "lsi_list", "paa_list", "persona", "searchintent", "searchinsights"]
+        # 必須キーの確認
+        required_keys = [
+            "keyword", "kyoukigo_list", "kyoukigo_top5",
+            "lsi_list", "paa_list", "persona",
+            "searchintent", "searchinsights"
+        ]
         for key in required_keys:
             if key not in data:
                 return jsonify({"error": f"{key} is required"}), 400
+
+        # experienceフラグ生成（block:1〜6）
+        experience_flags = generate_experience_flags()
 
         # テンプレート読み込み
         with open("prompts/promptheading.txt", "r", encoding="utf-8") as f:
             template = f.read()
 
-        # プレースホルダ置換
+        # プレースホルダ置換（experience_flag1〜6も含む）
         prompt = template.format(
             keyword=data["keyword"],
             kyoukigo_list=", ".join(data["kyoukigo_list"]),
@@ -260,7 +275,13 @@ def generate_heading():
             paa_list=", ".join(data["paa_list"]),
             persona=data["persona"],
             searchintent=data["searchintent"],
-            searchinsights=data["searchinsights"]
+            searchinsights=data["searchinsights"],
+            experience_flag1=experience_flags[0],
+            experience_flag2=experience_flags[1],
+            experience_flag3=experience_flags[2],
+            experience_flag4=experience_flags[3],
+            experience_flag5=experience_flags[4],
+            experience_flag6=experience_flags[5]
         )
 
         # Claude API 呼び出し
@@ -276,12 +297,10 @@ def generate_heading():
             "messages": [{"role": "user", "content": prompt}]
         }
 
-        # Claude API 呼び出し部分（修正済みでOKならこのままで大丈夫です）
         response = requests.post("https://api.anthropic.com/v1/messages", headers=headers, json=body)
         response.raise_for_status()
-
-        # 修正ポイント：heading_html に一括格納して返す
         content = response.json()["content"][0]["text"]
+
         return jsonify({"heading_html": content})
 
     except Exception as e:
