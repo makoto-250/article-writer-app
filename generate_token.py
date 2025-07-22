@@ -10,7 +10,7 @@ def main():
         scopes=['https://www.googleapis.com/auth/adwords']
     )
 
-    creds = flow.run_console()
+    creds = flow.run_local_server(port=8080)
 
     print("\n✅ Access Token:", creds.token)
     print("🔁 Refresh Token:", creds.refresh_token)

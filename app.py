@@ -238,6 +238,11 @@ def get_lsi_paa():
 
 from google.ads.googleads.client import GoogleAdsClient
 from google.ads.googleads.errors import GoogleAdsException
+import os
+from flask import request, jsonify
+from dotenv import load_dotenv
+
+load_dotenv()
 
 @app.route("/get-related-terms", methods=["POST"])
 def get_related_terms():
@@ -252,15 +257,8 @@ def get_related_terms():
         client_id = os.getenv("GOOGLE_ADS_CLIENT_ID")
         client_secret = os.getenv("GOOGLE_ADS_CLIENT_SECRET")
         refresh_token = os.getenv("GOOGLE_ADS_REFRESH_TOKEN")
-        login_customer_id = os.getenv("GOOGLE_ADS_LOGIN_CUSTOMER_ID")
-
-        credentials = {
-            "developer_token": developer_token,
-            "client_id": client_id,
-            "client_secret": client_secret,
-            "refresh_token": refresh_token,
-            "login_customer_id": login_customer_id
-        }
+        login_customer_id = os.getenv("GOOGLE_ADS_LOGIN_CUSTOMER_ID")  # MCC
+        customer_id = os.getenv("GOOGLE_ADS_CUSTOMER_ID")  # 管理対象アカウントID（例：1234567890）
 
         client = GoogleAdsClient.load_from_dict({
             "developer_token": developer_token,
@@ -273,16 +271,13 @@ def get_related_terms():
 
         keyword_plan_idea_service = client.get_service("KeywordPlanIdeaService")
 
-        keyword_seed = [keyword_text]
-        location_ids = [2392]  # 日本のlocation_id（東京など）
-        language_id = 1005     # 日本語のlanguage_id
-
+        # リクエスト作成
         request_obj = client.get_type("GenerateKeywordIdeasRequest")
-        request_obj.customer_id = login_customer_id
-        request_obj.keyword_seed.keywords.extend(keyword_seed)
-        request_obj.language = f"languageConstants/{language_id}"
-        request_obj.geo_target_constants.append(f"geoTargetConstants/{location_ids[0]}")
+        request_obj.customer_id = customer_id  # ← MCCではなく管理アカウントID
+        request_obj.language = "languageConstants/1005"  # 日本語
+        request_obj.geo_target_constants.append("geoTargetConstants/2392")  # 日本
         request_obj.include_adult_keywords = False
+        request_obj.keyword_seed.keywords.append(keyword_text)
 
         response = keyword_plan_idea_service.generate_keyword_ideas(request=request_obj)
 
