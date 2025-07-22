@@ -9,7 +9,7 @@
 	{persona}　ペルソナ
 出力形式・構成ルール
 	記事全体は6ブロック構成（block:1～block:6）
-	- 各ブロックに <h2> × 1、 <h3> × 3（合計：h2×6、h3×18）h2は{block_title1~6}に保存、h3は{topic1~6_1~3}に保存
+    - 各ブロックに <h2> × 1、 <h3> × 3（合計：h2×6、h3×18）すべてをHTML形式でまとめて出力し、変数{heading_html}に保存
 	- 各h2には {kyoukigo_top5} のいずれかを含める（自然に）
 	- 各h3には {kyoukigo_list}, {lsi_list},{paa_list} のいずれかを必ず自然に含める
 	- 出力形式は HTMLコードブロック（ html で開始）
